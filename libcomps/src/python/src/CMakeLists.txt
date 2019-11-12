@@ -28,18 +28,137 @@ set (pycomps_HEADERS pycomps_23macros.h pycomps_sequence.h
 #                comps/merged_comps_1_2.xml  comps/merged_comps_2_1.xml
 #                comps/comps-f21.xml)
 
-list (LENGTH pycomps_SRC pycomps_SRCLEN)
-math (EXPR pycomps_SRCLEN "${pycomps_SRCLEN} - 1")
-foreach(i RANGE 0 ${pycomps_SRCLEN})
-    list (GET pycomps_SRC ${i} val)
-    LIST_REPLACE(pycomps_SRC ${i} "${CMAKE_CURRENT_SOURCE_DIR}/${val}")
-endforeach(i)
+# list (LENGTH pycomps_SRC pycomps_SRCLEN)
+# math (EXPR pycomps_SRCLEN "${pycomps_SRCLEN} - 1")
+# foreach(i RANGE 0 ${pycomps_SRCLEN})
+#     list (GET pycomps_SRC ${i} val)
+#     LIST_REPLACE(pycomps_SRC ${i} "${CMAKE_CURRENT_SOURCE_DIR}/${val}")
+# endforeach(i)
 
-list (LENGTH pycomps_HEADERS pycomps_SRCLEN)
-math (EXPR pycomps_SRCLEN "${pycomps_SRCLEN} - 1")
-foreach(i RANGE 0 ${pycomps_SRCLEN})
-    list (GET pycomps_HEADERS ${i} val)
-    LIST_REPLACE(pycomps_HEADERS ${i} "${CMAKE_CURRENT_SOURCE_DIR}/${val}")
-endforeach(i)
+# list (LENGTH pycomps_HEADERS pycomps_SRCLEN)
+# math (EXPR pycomps_SRCLEN "${pycomps_SRCLEN} - 1")
+# foreach(i RANGE 0 ${pycomps_SRCLEN})
+#     list (GET pycomps_HEADERS ${i} val)
+#     LIST_REPLACE(pycomps_HEADERS ${i} "${CMAKE_CURRENT_SOURCE_DIR}/${val}")
+# endforeach(i)
 
-add_subdirectory(python${pversion})
+MACRO(PYTHON_UNSET)
+    unset(PYTHON_LIBRARY)
+    unset(PYTHON_INCLUDE_DIR)
+    unset(PYTHON_EXECUTABLE)
+    unset(PYTHON_LIBRARY CACHE)
+    unset(PYTHON_INCLUDE_DIR CACHE)
+    unset(PYTHON_EXECUTABLE CACHE)
+ENDMACRO(PYTHON_UNSET)
+
+if (NOT SKBUILD)
+    # if (${PYTHON_DESIRED} STREQUAL "2")
+    #     PYTHON_UNSET()
+    #     FIND_PACKAGE(PythonLibs 2 EXACT)
+    #     FIND_PACKAGE(PythonInterp 2 EXACT REQUIRED)
+    # elseif (${PYTHON_DESIRED} STREQUAL "3")
+    PYTHON_UNSET()
+    SET(Python_ADDITIONAL_VERSIONS 3.0 CACHE INTERNAL "")
+    FIND_PACKAGE(PythonLibs 3 EXACT)
+    FIND_PACKAGE(PythonInterp 3 EXACT REQUIRED)
+    # elseif (EXISTS ${PYTHON_DESIRED})
+    #     PYTHON_UNSET()
+    #     SET(PYTHON_EXECUTABLE ${PYTHON_DESIRED} CACHE INTERNAL "")
+    #     FIND_PACKAGE(PythonInterp REQUIRED)
+    #     FIND_PACKAGE(PythonLibs)
+    # else ()
+    #     MESSAGE(FATAL_ERROR "Invalid PYTHON_DESIRED value: " ${PYTHON_DESIRED})
+    # endif ()
+endif (NOT SKBUILD)
+
+EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE} -c "
+from sys import stdout
+from distutils import sysconfig
+path=sysconfig.get_python_lib(True, prefix='${CMAKE_INSTALL_PREFIX}')
+stdout.write(path)"
+OUTPUT_VARIABLE PYTHON_INSTALL_DIR)
+
+include_directories(${PYTHON_INCLUDE_PATH})
+include_directories(${LIBCOMPS_INCLUDE_PATH})
+
+# configure_file(${pycomps_TESTSDIR}/run_tests.sh.in
+#                ./libcomps/run_tests.sh)
+
+# include(../pycopy.cmake)
+
+
+
+# Python 3
+add_library(pycomps SHARED ${pycomps_SRC})
+set_target_properties(pycomps PROPERTIES LIBRARY_OUTPUT_DIRECTORY "./libcomps")
+set_target_properties(pycomps PROPERTIES PREFIX "")
+set_target_properties(pycomps PROPERTIES LIBRARY_OUTPUT_NAME "_libpycomps")
+add_dependencies(pycomps src-copy)
+# End Python 3
+
+
+# # Python 2
+# add_library(pycomps SHARED ${pycomps_SRC})
+# set_target_properties(pycomps PROPERTIES LIBRARY_OUTPUT_DIRECTORY "./libcomps")
+# set_target_properties(pycomps PROPERTIES PREFIX "_lib")
+# #set_target_properties(pycomps PROPERTIES LIBRARY_OUTPUT_NAME "_libpycomps")
+# #add_dependencies(pycomps src-copy)
+# SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+# SET(CMAKE_SKIP_BUILD_RPATH  TRUE)
+# SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+# # End Python 2
+
+
+
+
+
+target_link_libraries(pycomps libcomps)
+target_link_libraries(pycomps ${EXPAT_LIBRARIES})
+target_link_libraries(pycomps ${LIBXML2_LIBRARIES})
+target_link_libraries(pycomps ${PYTHON_LIBRARIES})
+
+
+
+# Python 3
+add_custom_target(pytest_run COMMAND ./run_tests.sh
+                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libcomps/
+                   COMMENT "Running python binding tests")
+add_dependencies(pycomps pycomps py3-copy)
+# End Python 3
+
+
+# # Python 2
+# set(pycopy pytest_run)
+
+# add_custom_target(pytest_run)
+# add_dependencies(pytest_run pycomps)
+
+# add_custom_command(TARGET pytest_run COMMAND ./run_tests.sh
+#                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libcomps/
+#                    COMMENT "Running python binding tests")
+
+# add_dependencies(pytest pytest_run)
+# # End Python 2
+
+IF (SKBUILD)
+    find_package(PythonExtensions REQUIRED)
+    python_extension_module(pycomps)
+    INSTALL(FILES libcomps/__init__.py DESTINATION libcomps/src/python/src/libcomps)
+    INSTALL(TARGETS pycomps LIBRARY DESTINATION libcomps/src/python/src/libcomps)
+ELSE ()
+    FILE(COPY libcomps/__init__.py DESTINATION libcomps)
+    INSTALL(FILES ${pycomps_SRCDIR}/__init__.py DESTINATION ${PYTHON_INSTALL_DIR}/libcomps)
+    #INSTALL(FILES ${pycomps_SRCDIR}/tests/__test.py DESTINATION
+    #              ${PYTHON_INSTALL_DIR}/libcomps/)
+    #INSTALL(FILES ${pycomps_SRCDIR}/tests/fedora_comps.xml DESTINATION
+    #              ${PYTHON_INSTALL_DIR}/libcomps/)
+    #INSTALL(FILES ${pycomps_SRCDIR}/tests/sample_comps.xml DESTINATION
+    #              ${PYTHON_INSTALL_DIR}/libcomps/)
+    #INSTALL(FILES ${pycomps_SRCDIR}/tests/main_comps.xml DESTINATION
+    #              ${PYTHON_INSTALL_DIR}/libcomps/)
+    #INSTALL(FILES ${pycomps_SRCDIR}/tests/main_comps2.xml DESTINATION
+    #              ${PYTHON_INSTALL_DIR}/libcomps/)
+    INSTALL (TARGETS pycomps LIBRARY DESTINATION ${PYTHON_INSTALL_DIR}/libcomps)
+    # Version has to be passed as last argument.
+    INSTALL(CODE "EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/setup_for_python_metadata.py install_egg_info --install-dir \$ENV{DESTDIR}/${PYTHON_INSTALL_DIR} ${VERSION})")
+ENDIF ()

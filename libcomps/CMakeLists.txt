@@ -1,6 +1,7 @@
-project(libcomps)
+project(libcomps C)
 
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8.10)
+
 include (${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 include (${CMAKE_SOURCE_DIR}/version.cmake)
 #set (CMAKE_CXX_COMPILER g++)
@@ -14,6 +15,14 @@ set (CMAKE_C_FLAGS_DEBUG    "${CMAKE_C_FLAGS} -ggdb -O0 -Wall -Wextra")
 set (VERSION "${libcomps_VERSION_MAJOR}.${libcomps_VERSION_MINOR}.${libcomps_VERSION_PATCH}")
 #set (libcomps_SOURCE comps_list.c)
 #set (libcomps_HEADERS comps_list.h)
+
+option(BUILD_LIBCOMPS_SHARED "Build libcomps as a shared library" ON)
+if(NOT BUILD_LIBCOMPS_SHARED)
+  set(CMAKE_POSITION_INDEPENDENT_CODE 1)
+endif()
+
+option(LIBCOMPS_INSTALL_DEVELOPMENT "Install libcomps development files." ON)
+option(LIBCOMPS_INSTALL_DOCS "Install libcomps documentation." ON)
 
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")

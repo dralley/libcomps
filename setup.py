@@ -1,0 +1,47 @@
+import json
+
+from skbuild import setup
+
+
+with open('version.json', 'r+') as version_file:
+    version_dict = json.loads(version_file.read())
+    # build version string
+    version = '{major}.{minor}.{patch}-{release}'.format(
+        major=version_dict['libcomps_VERSION_MAJOR'],
+        minor=version_dict['libcomps_VERSION_MINOR'],
+        patch=version_dict['libcomps_VERSION_PATCH'],
+        release=version_dict['libcomps_RELEASE']
+    )
+
+setup(
+    name='libcomps',
+    description='Libcomps is alternative for yum.comps library.',
+    version=version,
+    license='GPLv2+',
+    author='RPM Software Management',
+    author_email='rpm-ecosystem@lists.rpm.org',
+    url='https://github.com/rpm-software-management',
+    classifiers=[
+        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: C',
+        'Topic :: System :: Software Distribution',
+        'Topic :: System :: Systems Administration',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+    ],
+    packages=['libcomps'],
+    package_dir={
+        'libcomps': 'libcomps/src/python/src/libcomps/'
+    },
+    cmake_args=[
+        '-DBIN_INSTALL_DIR:PATH=libcomps/src/python/src/libcomps/data/bin',
+        '-DBUILD_LIBCOMPS_SHARED:BOOL=OFF',
+        '-DLIBCOMPS_INSTALL_DEVELOPMENT:BOOL=OFF',
+        '-DLIBCOMPS_INSTALL_DOCS:BOOL=OFF',
+    ],
+    cmake_languages=['C'],
+    cmake_source_dir="libcomps",
+)
